@@ -1,10 +1,11 @@
-from room import Room
+import random
+
+from ast import literal_eval
+from queue import SimpleQueue
+
 from player import Player
 from world import World
 
-import random
-from ast import literal_eval
-from queue import SimpleQueue
 
 # Load world
 world = World()
@@ -113,7 +114,7 @@ def get_traversal_path(player):
                          adv_map)
         else:
             adv_map[prev_room][traversal_path[-1]] = player.current_room.id
-            adv_map[player.current_room.id][opposite[traversal_path[-1]]] = \
+            adv_map[player.current_room.id][reverse_direction[traversal_path[-1]]] = \
                prev_room
 
         next_move = get_next_move(player, adv_map)
