@@ -4,6 +4,7 @@ from world import World
 
 import random
 from ast import literal_eval
+from queue import SimpleQueue
 
 # Load world
 world = World()
@@ -27,27 +28,49 @@ player = Player(world.starting_room)
 
 # Fill this out with directions to walk
 # traversal_path = ['n', 'n']
-opposite = {'n': 's', 'e': 'w', 's': 'n', 'w': 'e'}
+reverse_direction = {'n': 's', 'e': 'w', 's': 'n', 'w': 'e'}
 traversal_path = []
 
 adv_map = {}
 prev_room = None
 
+def find_nearest_unexplored(room_id, adv_map):
+    searched = {}
+    to_search = SimpleQueue()
+    to_search.put((room_id, None))
+    while to_search.qsize() > 0:
+        (room, direction) = to_search.get()
+        if room not in searched:
+            searched[room] = direction
+            for exit_dir, next_room in adv_map[room].items():
+                if next_room == '?':
+                    path = [exit_dir]
+                    step = direction
+                    while step is not None:
+                        path.append(step)
+                        room = adv_map[room][reverse_direction[step]]
+                        step = searched[room]
+                    return path[::-1]
+
+            for direction, neighboring_room in adv_map[room].items():
+                if neighboring_room != '?' and neighboring_room not in searched:
+                    to_search.put((neighboring_room, direction))
+
 def get_next_move(player, adv_map):
     for direction, room in adv_map[player.current_room.id].items():
         if room == '?':
-            return direction
+            return [direction]
     if map_complete(adv_map):
         return None
     else:
-        return random.choice(player.current_room.get_exits())
+        return find_nearest_unexplored(player.current_room.id, adv_map)
 
 def map_complete(adv_map):
     return not any (['?' in exits.values() for exits in adv_map.values()])
 
 def add_new_room(room, prev_room, prev_dir, adv_map):
     adv_map[room.id] = {direction: '?' for direction in room.get_exits()}
-    adv_map[room.id][opposite[prev_dir]] = prev_room
+    adv_map[room.id][reverse_direction[prev_dir]] = prev_room
     adv_map[prev_room][prev_dir] = room.id
 
 
@@ -57,19 +80,20 @@ adv_map[player.current_room.id] = {direction: '?' for direction in \
 
 next_move = get_next_move(player, adv_map)
 while next_move is not None:
-    prev_room = player.current_room.id
-    traversal_path.append(next_move)        
-    player.travel(next_move)
+    traversal_path += next_move
+    for direction in next_move:
+        prev_room = player.current_room.id
+        player.travel(direction)
 
     if player.current_room.id not in adv_map:
-        if player.current_room.id not in adv_map:
-            add_new_room(player.current_room,
-                         prev_room,
-                         traversal_path[-1],
-                         adv_map)
+        add_new_room(player.current_room,
+                     prev_room,
+                     traversal_path[-1],
+                     adv_map)
     else:
         adv_map[prev_room][traversal_path[-1]] = player.current_room.id
-
+        adv_map[player.current_room.id][reverse_direction[traversal_path[-1]]] = \
+            prev_room
     next_move = get_next_move(player, adv_map)
 
 
