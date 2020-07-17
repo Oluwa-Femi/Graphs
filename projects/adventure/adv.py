@@ -53,7 +53,7 @@ def find_nearest_unexplored(room_id, current_map):
                         current_map[room_id][exit_dir] = \
                             temp_player.current_room.id
                         current_map[temp_player.current_room.id] \
-                            [opposite[exit_dir]] = room_id
+                            [reverse_direction[exit_dir]] = room_id
             if len(options) > 0:
                 return_path = [random.choice(options)]
                 step = previous_direction
@@ -78,11 +78,13 @@ def get_next_move(player, curr_map):
             temp_player = Player(player.current_room)
             temp_player.travel(exit_dir)
             if temp_player.current_room.id not in curr_map:
+                if len(temp_player.current_room.get_exits()) == 1:
+                    return exit_dir
                 options.append(exit_dir)
             else:
                 curr_map[player.current_room.id][exit_dir] = \
                     temp_player.current_room.id
-                curr_map[temp_player.current_room.id][opposite[exit_dir]] = \
+                curr_map[temp_player.current_room.id][reverse_direction[exit_dir]] = \
                     player.current_room.id
     if len(options) > 0:
         return [random.choice(options)]
@@ -93,13 +95,21 @@ def get_next_move(player, curr_map):
 def map_complete(current_map):
     return not any(['?' in exits.values() for exits in current_map.values()])
 
-def add_new_room(room, prev_room, prev_dir, current_map):
+def add_new_room(room, last_room, last_dir, curr_map):
     # Add previously unexplored room to map
-    current_map[room.id] = {direction: '?' for direction in room.get_exits()}
+    curr_map[room.id] = {direction: '?' for direction in room.get_exits()}
     if last_dir is not None:
-        current_map[room.id][opposite[last_dir]] = last_room
-        current_map[last_room][last_dir] = room.id
+        curr_map[room.id][reverse_direction[last_dir]] = last_room
+        curr_map[last_room][last_dir] = room.id
 
+    for exit_dir in room.get_exits():
+        temp_player = Player(world.rooms[room.id])
+        if curr_map[room.id][exit_dir] == '?':
+            temp_player.travel(exit_dir)
+            if temp_player.current_room.id in curr_map:
+                curr_map[room.id][exit_dir] = temp_player.current_room.id
+                curr_map[temp_player.current_room.id][reverse_direction[exit_dir]] = \
+                    room.id
 
 def get_traversal_path(player):
     """
@@ -167,7 +177,7 @@ def get_path_rec(player, prev_room=None, adv_map=None, path_hist=None):
             else:
                 adv_map[player.current_room.id][exit_dir] = \
                     temp_player.current_room.id
-                adv_map[temp_player.current_room.id][opposite[exit_dir]] = \
+                adv_map[temp_player.current_room.id][reverse_direction[exit_dir]] = \
                     player.current_room.id
 
     if len(options) > 0:
